@@ -16,7 +16,6 @@ IMAGE img_shadow;
 // forward declearation for encapslted putimage
 inline void putimage_alpha(int x, int y, IMAGE* img);
 
-
 // def Animation class(passed in img path, img num, and img frame interval)
 class Animation
 {
@@ -79,6 +78,135 @@ private:
 	int interval_ms{ 0 };
 	// def frame vector
 	std::vector<IMAGE*> frame_list;
+};
+
+// def player class(passin )
+class Player
+{
+public:
+	// constructor to load shadow and player anim
+	Player()
+	{
+		loadimage(&img_shadow, _T("../Tivat/img/shadow_player.png"));
+		anim_left = new Animation(_T("../Tivat/img/player_left_%d.png"), 6, 45);
+		anim_right = new Animation(_T("../Tivat/img/player_right_%d.png"), 6, 45);
+	}
+	// release space of player's anim
+	~Player()
+	{
+		delete anim_left;
+		delete anim_right;
+	}
+
+	// def how to execute player input
+	void ProcessEvent(const ExMessage& msg)
+	{
+		// set move state true when keydown without alt
+		if (msg.message == WM_KEYDOWN)
+		{
+			// set move state by vk
+			switch (msg.vkcode)
+			{
+			case VK_UP:
+				is_move_up = true;
+				break;
+			case VK_DOWN:
+				is_move_down = true;
+				break;
+			case VK_LEFT:
+				is_move_left = true;
+				break;
+			case VK_RIGHT:
+				is_move_right = true;
+				break;
+			}
+		}
+		// set move state false when keyup without alt
+		else if (msg.message == WM_KEYUP)
+		{
+			// set move state by vk
+			switch (msg.vkcode)
+			{
+			case VK_UP:
+				is_move_up = false;
+				break;
+			case VK_DOWN:
+				is_move_down = false;
+				break;
+			case VK_LEFT:
+				is_move_left = false;
+				break;
+			case VK_RIGHT:
+				is_move_right = false;
+				break;
+			}
+		}
+	}
+
+	// def player's motion
+	void Move()
+	{
+		// convert speed and state to vector movement
+		// if move in both x and y
+		int dir_x = is_move_right - is_move_left;
+		int dir_y = is_move_down - is_move_up;
+		double len_dir = sqrt(dir_x * dir_x + dir_y * dir_y);
+		if (len_dir != 0)
+		{
+			//  component of motion on x or y
+			double normalized_x = dir_x / len_dir;
+			double normalized_y = dir_y / len_dir;
+			position.x += (int)(SPEED * normalized_x);
+			position.y += (int)(SPEED * normalized_y);
+		}
+
+		// window edge collision
+		if (position.x < 0) position.x = 0;
+		if (position.y < 0) position.y = 0;
+		if (position.x + FRAME_WIDTH > WINDOW_WIDTH) position.x = WINDOW_WIDTH - FRAME_WIDTH;
+		if (position.y + FRAME_HEIGHT > WINDOW_HEIGHT) position.y = WINDOW_HEIGHT - FRAME_HEIGHT;
+	}
+
+	// draw player anim (pass in game frame interval)
+	void Draw(int delta)
+	{
+		// set shadow position and display
+		int pos_shadow_x = position.x + (FRAME_WIDTH / 2 - SHADOW_WIDTH / 2);
+		int pos_shadow_y = position.y + FRAME_HEIGHT - 8;
+		putimage_alpha(pos_shadow_x, pos_shadow_y, &img_shadow);
+
+		// init orientation of player
+		static bool facing_left{ false };
+		// get ori by move on x axis
+		int dir_x = is_move_right - is_move_left;
+		if (dir_x < 0)
+			facing_left = true;
+		else if (dir_x > 0)
+			facing_left = false;
+
+		// play anim
+		if (facing_left)
+			anim_left->Play(position.x, position.y, delta);
+		else
+			anim_right->Play(position.x, position.y, delta);
+	}
+
+private:
+	// def const properties of player
+	const int SPEED{ 5 };
+	const int FRAME_WIDTH{ 80 };
+	const int FRAME_HEIGHT{ 80 };
+	const int SHADOW_WIDTH{ 32 };
+	IMAGE img_shadow;
+	// def dync properties of player
+	Animation* anim_left;
+	Animation* anim_right;
+	POINT position{ 500,500 };
+	bool is_move_up{ false };
+	bool is_move_down{ false };
+	bool is_move_left{ false };
+	bool is_move_right{ false };
+
 };
 
 // def player anim object 
@@ -153,6 +281,9 @@ int main()
 	loadimage(&img_background,_T("../Tivat/img/background.png"));
 	loadimage(&img_shadow, _T("../Tivat/img/shadow_player.png"));
 
+	//init player
+	Player player1{};
+
 	// batch draw for drawing smoothly
 	BeginBatchDraw();
 
@@ -165,6 +296,7 @@ int main()
 		// begin event loop
 		while (peekmessage(&msg))
 		{
+			/*
 			// set state true when keydown without alt
 			if (msg.message == WM_KEYDOWN)
 			{
@@ -205,12 +337,16 @@ int main()
 					break;
 				}
 			}
+			*/
+			player1.ProcessEvent(msg);
 		}
 		// record event end
 		endTime = GetTickCount();
 
 		// convert speed and state to vector movement
 		// if move in both x and y
+		
+		/*
 		int dir_x = is_move_right - is_move_left;
 		int dir_y = is_move_down - is_move_up;
 		double len_dir = sqrt(dir_x * dir_x + dir_y * dir_y);
@@ -228,6 +364,8 @@ int main()
 		if (player_pos.y < 0) player_pos.y = 0;
 		if (player_pos.x + PLAYER_WIDTH > WINDOW_WIDTH) player_pos.x = WINDOW_WIDTH - PLAYER_WIDTH;
 		if (player_pos.y + PLAYER_HEIGHT > WINDOW_HEIGHT) player_pos.y = WINDOW_HEIGHT - PLAYER_HEIGHT;
+		*/
+		player1.Move();
 
 		// clear screen
 		cleardevice();
@@ -236,7 +374,11 @@ int main()
 		putimage(0, 0, &img_background);
 
 		// draw player anim
+		player1.Draw(1000 / 180);
+		/*
 		DrawPlayer(1000 / 180, is_move_right - is_move_left);
+		*/
+
 		FlushBatchDraw();
 
 		// take a break for the rest of the event time(1000/180 - event time)
