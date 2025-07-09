@@ -1,6 +1,6 @@
-#include<graphics.h>
-#include<string>
-#include<vector>
+#include<graphics.h> // For EasyX
+#include<string> // For TCHAR, _stprintf_s etc
+#include<vector> // For std::vector<IMAGE*> frame_list
 
 // def window size
 const int WINDOW_WIDTH{ 1280 };
