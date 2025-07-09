@@ -26,7 +26,7 @@ public:
 	{
 		// def frame interval
 		interval_ms = interval;
-		//	save path to 1 img				TCHAR str[256] defines a string variable named str,
+		// save path to 1 img				TCHAR str[256] defines a string variable named str,
 		//									which can store up to 255 characters.
 		//									The type of this variable is Tchar, a data type used in Windows API,
 		//									which can be automatically converted to CHAR or wchar_t type 
