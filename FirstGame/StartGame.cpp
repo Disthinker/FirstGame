@@ -88,6 +88,10 @@ private:
 class Player
 {
 public:
+	// init def size
+	const int FRAME_WIDTH{ 80 };
+	const int FRAME_HEIGHT{ 80 };
+
 	// constructor to load shadow and player anim
 	Player()
 	{
@@ -203,8 +207,6 @@ public:
 private:
 	// def const properties of player
 	const int SPEED{ 5 };
-	const int FRAME_WIDTH{ 80 };
-	const int FRAME_HEIGHT{ 80 };
 	const int SHADOW_WIDTH{ 32 };
 	IMAGE img_shadow;
 	// def dync properties of player
@@ -284,11 +286,20 @@ public:
 
 	bool CheckBulletCollision(const Bullet& bullet)
 	{
-		return false;
+		bool is_overlap_x = bullet.position.x >= position.x && bullet.position.x <= position.x + FRAME_WIDTH;
+		bool is_overlap_y = bullet.position.y >= position.y && bullet.position.y <= position.y + FRAME_HEIGHT;
+		return is_overlap_x && is_overlap_y;
 	}
 
 	bool CheckPlayerCollision(const Player& player)
 	{
+		POINT check_position{ position.x + FRAME_WIDTH / 2, position.y + FRAME_HEIGHT / 2 };
+		const POINT& player_position{ player.GetPosition() };
+		if (check_position.x >= player_position.x && check_position.x <= player_position.x + player.FRAME_WIDTH)
+		{
+			if (check_position.y >= player_position.y && check_position.y <= player_position.y + player.FRAME_HEIGHT)
+				return true;
+		}
 		return false;
 	}
 
@@ -324,6 +335,15 @@ public:
 			anim_right->Play(position.x, position.y, delta);
 	}
 
+	void Hurt()
+	{
+		alive = false;
+	}
+	bool CheckAlive()
+	{
+		return alive;
+	}
+
 	// destructor like Player
 	~Enemy()
 	{
@@ -342,14 +362,32 @@ private:
 	Animation* anim_right;
 	POINT position{ 0,0 };
 	bool facing_left{ false };
+	bool alive{ true };
 };
 
+// generateEnemy per 100 frame
 void TryGenerateEnemy(std::vector<Enemy*>& enemy_list)
 {
 	const int INTERVAL{ 100 };
 	static int counter{ 0 };
 	if ((++counter) % INTERVAL == 0)
 		enemy_list.push_back(new Enemy());
+}
+
+// update bullet's position
+void UpdateBullets(std::vector<Bullet>& bullet_list, const Player& player)
+{
+	const double RADIAL_SPEED{ 0.0045 };
+	const double TANGENT_SPEED{ 0.0055 };
+	double radian_interval{ 2 * 3.14159 / bullet_list.size() };
+	POINT player_position{ player.GetPosition() };
+	double radius{ 100 + 25 * sin(GetTickCount() * RADIAL_SPEED) };
+	for (size_t i = 0; i < bullet_list.size(); i++)
+	{
+		double radian = GetTickCount() * TANGENT_SPEED + radian_interval * i;
+		bullet_list[i].position.x = player_position.x + player.FRAME_WIDTH / 2 + (int)(radius * sin(radian));
+		bullet_list[i].position.y = player_position.y + player.FRAME_HEIGHT / 2 + (int)(radius * cos(radian));
+	}
 }
 
 int main()
@@ -376,6 +414,9 @@ int main()
 	//inti enemy
 	std::vector<Enemy*> enemy_list;
 
+	//init bullet_list
+	std::vector<Bullet> Bullet_list(3);
+
 	// batch draw for drawing smoothly
 	BeginBatchDraw();
 
@@ -393,10 +434,47 @@ int main()
 		// get new position of player
 		player1.Move();
 
+		// update bullets
+		UpdateBullets(Bullet_list, player1);
+
 		// generate enemy
 		TryGenerateEnemy(enemy_list);
 		for (Enemy* enemy : enemy_list)
 			enemy->Move(player1);
+
+		// check collision between player and enemy
+		for (Enemy* enemy : enemy_list)
+		{
+			if (enemy->CheckPlayerCollision(player1))
+			{
+				MessageBox(GetHWnd(), _T("Score ???"), _T("YOU DEAD"), MB_OK);
+				Gamming = false;
+				break;
+			}
+		}
+		
+		for (Enemy* enemy : enemy_list)
+		{
+			for (const Bullet& bullet : Bullet_list)
+			{
+				if (enemy->CheckBulletCollision(bullet))
+				{
+					enemy->Hurt();
+				}
+			}
+		}
+
+		for (size_t i = 0; i < enemy_list.size(); i++)
+		{
+			Enemy* enemy = enemy_list[i];
+			if (!enemy->CheckAlive())
+			{
+				std::swap(enemy_list[i], enemy_list.back());
+				enemy_list.pop_back();
+				delete enemy;
+			}
+		}
+
 
 		// clear screen
 		cleardevice();
@@ -409,6 +487,10 @@ int main()
 		for (Enemy* enemy : enemy_list)
 		{
 			enemy->Draw(1000 / 180);
+		}
+		for (const Bullet& bullet : Bullet_list)
+		{
+			bullet.Draw();
 		}
 
 		FlushBatchDraw();
